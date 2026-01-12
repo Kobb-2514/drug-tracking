@@ -94,7 +94,7 @@ if selected_box_names:
 df = filtered_df
 
 # --- Main Dashboard ---
-st.title("💊 Drug Box Tracking Dashboard")
+st.title("💊 Drug Box Tracking Dashboard : Tha Tum Hospital")
 st.markdown("---")
 
 # KPI Cards
