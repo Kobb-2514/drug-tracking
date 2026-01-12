@@ -43,15 +43,55 @@ if df.empty:
     st.warning("กรุณาตรวจสอบลิงก์ Google Sheet ในโค้ดอีกครั้ง")
     st.stop()
 
-# --- ส่วน Sidebar ---
-st.sidebar.title("🔍 ตัวกรอง (Filter)")
-if 'ประเภท กล่อง' in df.columns:
-    box_types = st.sidebar.multiselect("ประเภทกล่อง", df['ประเภท กล่อง'].unique(), df['ประเภท กล่อง'].unique())
-    df = df[df['ประเภท กล่อง'].isin(box_types)]
+# --- ส่วน Sidebar (Menu & Filters) ปรับปรุงใหม่ ---
+st.sidebar.header("🔍 ตัวกรองข้อมูล (Filters)")
+st.sidebar.markdown("เลือกรายการที่ต้องการกรอง (ปล่อยว่าง = เลือกทั้งหมด)")
 
-if 'ตำเเหน่งกล่อง' in df.columns:
-    locations = st.sidebar.multiselect("ตำแหน่ง", df['ตำเเหน่งกล่อง'].unique(), df['ตำเเหน่งกล่อง'].unique())
-    df = df[df['ตำเเหน่งกล่อง'].isin(locations)]
+# 1. Filter ประเภทกล่อง (Drop Down)
+# ดึงข้อมูลที่ไม่ซ้ำมาทำตัวเลือก
+type_options = sorted(df['ประเภท กล่อง'].astype(str).unique())
+selected_types = st.sidebar.multiselect("1. ประเภทกล่อง", options=type_options)
+
+# 2. Filter ตำแหน่งกล่อง (Drop Down)
+loc_options = sorted(df['ตำเเหน่งกล่อง'].astype(str).unique())
+selected_locs = st.sidebar.multiselect("2. ตำแหน่งกล่อง", options=loc_options)
+
+# 3. Filter สถานะยา/DayLeft (Drop Down แทน Slider)
+# แปลง DayLeft เป็นกลุ่มเพื่อให้เลือกง่าย
+status_options = sorted(df['Status'].unique())
+selected_status = st.sidebar.multiselect("3. สถานะ (หมดอายุ/ปกติ)", options=status_options)
+
+# 4. Filter ยาที่หมดอายุไวสุด (Drop Down แทนพิมพ์ค้นหา)
+drug_options = sorted(df['ยาที่หมดอายุไวสุด'].astype(str).unique())
+selected_drugs = st.sidebar.multiselect("4. ชื่อยา (Drug Name)", options=drug_options)
+
+# 5. Filter ชื่อกล่อง (Drop Down แทนพิมพ์ค้นหา)
+box_name_options = sorted(df['ชื่อกล่อง'].astype(str).unique())
+selected_box_names = st.sidebar.multiselect("5. ชื่อกล่อง", options=box_name_options)
+
+
+# --- Apply Filters (Logic การกรองข้อมูล) ---
+# สร้างตัวแปร filtered_df เพื่อไม่ให้กระทบข้อมูลหลัก
+filtered_df = df.copy()
+
+# ถ้ามีการเลือกตัวเลือก ให้ทำการกรอง (ถ้าไม่เลือก ให้ข้ามไปแสดงทั้งหมด)
+if selected_types:
+    filtered_df = filtered_df[filtered_df['ประเภท กล่อง'].isin(selected_types)]
+
+if selected_locs:
+    filtered_df = filtered_df[filtered_df['ตำเเหน่งกล่อง'].isin(selected_locs)]
+
+if selected_status:
+    filtered_df = filtered_df[filtered_df['Status'].isin(selected_status)]
+
+if selected_drugs:
+    filtered_df = filtered_df[filtered_df['ยาที่หมดอายุไวสุด'].isin(selected_drugs)]
+
+if selected_box_names:
+    filtered_df = filtered_df[filtered_df['ชื่อกล่อง'].isin(selected_box_names)]
+
+# อัปเดตตัวแปร df ให้เป็นตัวที่กรองแล้ว เพื่อส่งต่อไปยังกราฟและตาราง
+df = filtered_df
 
 # --- Main Dashboard ---
 st.title("💊 Drug Box Tracking Dashboard")
