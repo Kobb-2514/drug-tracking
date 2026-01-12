@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 # ตั้งค่าหน้าเว็บ
-st.set_page_config(page_title="Drug Box Tracking Dashboard", layout="wide", page_icon="💊")
+st.set_page_config(page_title="Drug Box Tracking Dashboard : Tha Tum Hospital", layout="wide", page_icon="💊")
 
 # --- ส่วนของการจัดการข้อมูล ---
 @st.cache_data(ttl=60)
