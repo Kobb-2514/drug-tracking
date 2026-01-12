@@ -36,7 +36,7 @@ st.markdown("""
 def load_data():
     # -------------------------------------------------------------
     # 🔴 ใส่ Link CSV ของคุณที่นี่
-    gsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1xxxxxxxx/pub?output=csv" 
+    gsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQA2BrARJBp5oYf1cjTBdaU1Bi82FhtqO6TjDkVXoGQVNLSGQHGlhrIG15tV9FlhOw30meuha29Hq5Z/pub?output=csv" 
     # -------------------------------------------------------------
     
     try:
