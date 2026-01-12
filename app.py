@@ -85,7 +85,7 @@ filtered_df = create_filter("3. สถานะ", "Status")
 filtered_df = create_filter("4. ชื่อยา", "ยาที่หมดอายุไวสุด")
 
 # --- Main Dashboard ---
-st.title("DrugBoxTracking")
+st.title("DrugBox Tracking")
 st.caption("ระบติดตามกล่องยาในโรงพยาบาลท่าตูม") # ใช้ Caption แทนชื่อยาวๆ เพื่อประหยัดพื้นที่แนวตั้ง
 
 # ปุ่ม Action (Update / Edit)
