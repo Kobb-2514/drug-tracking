@@ -2,41 +2,16 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# 1. ตั้งค่าหน้าเว็บ (Page Config)
-st.set_page_config(
-    page_title="Drug Box Tracking : Tha Tum Hospital", 
-    layout="wide", 
-    page_icon="💊",
-    initial_sidebar_state="collapsed" # ในมือถือให้ซ่อนเมนูก่อน เพื่อความสะอาดตา
-)
-
-# 2. 📱 CSS Hack: ปรับแต่งให้เข้ากับมือถือ (ลดขอบ, ซ่อน Footer)
-st.markdown("""
-    <style>
-        /* ลดขอบขาวด้านบนสุด (Header padding) */
-        .block-container {
-            padding-top: 1rem !important;
-            padding-bottom: 1rem !important;
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-        }
-        /* ปรับขนาดตัวหนังสือ Metric ให้พอดีมือถือ */
-        [data-testid="stMetricValue"] {
-            font-size: 1.5rem !important;
-        }
-        /* ซ่อน Footer "Made with Streamlit" เพื่อความเนียน */
-        footer {visibility: hidden;}
-        /* ปรับระยะห่างระหว่างบรรทัดให้แน่นขึ้น */
-        .stMarkdown {margin-bottom: -10px;}
-    </style>
-""", unsafe_allow_html=True)
+# ตั้งค่าหน้าเว็บ
+st.set_page_config(page_title="Drug Box Tracking  : โรงพยาบาลท่าตูม", layout="wide", page_icon="💊")
 
 # --- ส่วนของการจัดการข้อมูล ---
 @st.cache_data(ttl=60)
 def load_data():
     # -------------------------------------------------------------
-    # 🔴 ใส่ Link CSV ของคุณที่นี่
-    gsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT1xxxxxxxx/pub?output=csv" 
+    # 🔴 สำคัญ! นำลิงก์จากขั้นตอนที่ 1 (Publish to web) มาวางแทนที่ตรงนี้
+    gsheet_url = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQA2BrARJBp5oYf1cjTBdaU1Bi82FhtqO6TjDkVXoGQVNLSGQHGlhrIG15tV9FlhOw30meuha29Hq5Z/pub?output=csv"
+    # ตัวอย่าง: "https://docs.google.com/spreadsheets/d/e/2PACX.../pub?output=csv"
     # -------------------------------------------------------------
     
     try:
@@ -64,90 +39,91 @@ def load_data():
 
 df = load_data()
 
-# --- ส่วน Sidebar (ตัวกรองแบบ Dropdown) ---
-st.sidebar.header("🔍 ตัวกรอง (Filters)")
-st.sidebar.markdown("กดที่ช่องเพื่อเลือกรายการ")
+if df.empty:
+    st.warning("กรุณาตรวจสอบลิงก์ Google Sheet ในโค้ดอีกครั้ง")
+    st.stop()
 
+# --- ส่วน Sidebar (Menu & Filters) ปรับปรุงใหม่ ---
+st.sidebar.header("🔍 ตัวกรองข้อมูล (Filters)")
+st.sidebar.markdown("เลือกรายการที่ต้องการกรอง (ปล่อยว่าง = เลือกทั้งหมด)")
+
+# 1. Filter ประเภทกล่อง (Drop Down)
+# ดึงข้อมูลที่ไม่ซ้ำมาทำตัวเลือก
+type_options = sorted(df['ประเภท กล่อง'].astype(str).unique())
+selected_types = st.sidebar.multiselect("1. ประเภทกล่อง", options=type_options)
+
+# 2. Filter ตำแหน่งกล่อง (Drop Down)
+loc_options = sorted(df['ตำเเหน่งกล่อง'].astype(str).unique())
+selected_locs = st.sidebar.multiselect("2. ตำแหน่งกล่อง", options=loc_options)
+
+# 3. Filter สถานะยา/DayLeft (Drop Down แทน Slider)
+# แปลง DayLeft เป็นกลุ่มเพื่อให้เลือกง่าย
+status_options = sorted(df['Status'].unique())
+selected_status = st.sidebar.multiselect("3. สถานะ (หมดอายุ/ปกติ)", options=status_options)
+
+# 4. Filter ยาที่หมดอายุไวสุด (Drop Down แทนพิมพ์ค้นหา)
+drug_options = sorted(df['ยาที่หมดอายุไวสุด'].astype(str).unique())
+selected_drugs = st.sidebar.multiselect("4. ชื่อยา (Drug Name)", options=drug_options)
+
+# 5. Filter ชื่อกล่อง (Drop Down แทนพิมพ์ค้นหา)
+box_name_options = sorted(df['ชื่อกล่อง'].astype(str).unique())
+selected_box_names = st.sidebar.multiselect("5. ชื่อกล่อง", options=box_name_options)
+
+
+# --- Apply Filters (Logic การกรองข้อมูล) ---
+# สร้างตัวแปร filtered_df เพื่อไม่ให้กระทบข้อมูลหลัก
 filtered_df = df.copy()
 
-# ฟังก์ชันสร้าง Dropdown ให้โค้ดสั้นลง
-def create_filter(label, col_name):
-    if col_name in df.columns:
-        options = sorted(df[col_name].astype(str).unique())
-        selected = st.sidebar.multiselect(label, options)
-        if selected:
-            return filtered_df[filtered_df[col_name].isin(selected)]
-    return filtered_df
+# ถ้ามีการเลือกตัวเลือก ให้ทำการกรอง (ถ้าไม่เลือก ให้ข้ามไปแสดงทั้งหมด)
+if selected_types:
+    filtered_df = filtered_df[filtered_df['ประเภท กล่อง'].isin(selected_types)]
 
-filtered_df = create_filter("1. ประเภทกล่อง", "ประเภท กล่อง")
-filtered_df = create_filter("2. ตำแหน่ง", "ตำเเหน่งกล่อง")
-filtered_df = create_filter("3. สถานะ", "Status")
-filtered_df = create_filter("4. ชื่อยา", "ยาที่หมดอายุไวสุด")
+if selected_locs:
+    filtered_df = filtered_df[filtered_df['ตำเเหน่งกล่อง'].isin(selected_locs)]
+
+if selected_status:
+    filtered_df = filtered_df[filtered_df['Status'].isin(selected_status)]
+
+if selected_drugs:
+    filtered_df = filtered_df[filtered_df['ยาที่หมดอายุไวสุด'].isin(selected_drugs)]
+
+if selected_box_names:
+    filtered_df = filtered_df[filtered_df['ชื่อกล่อง'].isin(selected_box_names)]
+
+# อัปเดตตัวแปร df ให้เป็นตัวที่กรองแล้ว เพื่อส่งต่อไปยังกราฟและตาราง
+df = filtered_df
 
 # --- Main Dashboard ---
-st.title("💊 Drug Box Tracking")
-st.caption("Tha Tum Hospital") # ใช้ Caption แทนชื่อยาวๆ เพื่อประหยัดพื้นที่แนวตั้ง
-
-# ปุ่ม Action (Update / Edit)
-c_edit, c_refresh = st.columns([1, 1])
-with c_edit:
-    # 🔴 ใส่ Link Google Sheet หน้า Edit ที่นี่
-    st.link_button("📝 แก้ไข (Sheet)", "https://docs.google.com/spreadsheets/d/xxxxxx/edit", use_container_width=True)
-with c_refresh:
-    if st.button("🔄 รีเฟรชข้อมูล", use_container_width=True):
-        st.cache_data.clear()
-        st.rerun()
-
+st.title("💊 Drug Box Tracking  : โรงพยาบาลท่าตูม")
 st.markdown("---")
 
-# KPI Cards (บนมือถือจะเรียงลงมาเอง, บนคอมฯ จะเรียงหน้ากระดาน 3 ช่อง)
-col1, col2, col3 = st.columns(3)
-total = len(filtered_df)
-expired = len(filtered_df[filtered_df['DayLeft'] < 0])
-soon = len(filtered_df[(filtered_df['DayLeft'] >= 0) & (filtered_df['DayLeft'] <= 90)])
+# KPI Cards
+c1, c2, c3 = st.columns(3)
+c1.metric("📦 กล่องทั้งหมด", f"{len(df)} กล่อง")
+c2.metric("🔴 หมดอายุแล้ว", f"{len(df[df['DayLeft'] < 0])} กล่อง")
+c3.metric("😢 ใกล้หมดอายุแล้ว (<90วัน)", f"{len(df[(df['DayLeft'] >= 0) & (df['DayLeft'] <= 90)])} กล่อง")
 
-col1.metric("📦 ทั้งหมด", f"{total}", "กล่อง")
-col2.metric("🔴 หมดอายุ", f"{expired}", "กล่อง", delta_color="inverse")
-col3.metric("jq ใกล้หมด", f"{soon}", "กล่อง", delta_color="off")
-
-# Charts (กราฟ)
-st.markdown("### 📊 ภาพรวม")
-
-# ใช้ Tab เพื่อประหยัดพื้นที่หน้าจอมือถือ (ไม่ต้องไถยาวๆ)
-tab1, tab2 = st.tabs(["📍 ตามตำแหน่ง", "🍰 สัดส่วนสถานะ"])
-
-with tab1:
-    if 'ตำเเหน่งกล่อง' in filtered_df.columns:
-        counts = filtered_df['ตำเเหน่งกล่อง'].value_counts().reset_index()
+# Charts
+col_chart1, col_chart2 = st.columns([3, 2])
+with col_chart1:
+    if 'ตำเเหน่งกล่อง' in df.columns:
+        counts = df['ตำเเหน่งกล่อง'].value_counts().reset_index()
         counts.columns = ['Location', 'Count']
-        # ปรับความสูงกราฟให้พอดีมือถือ (height=350)
-        fig = px.bar(counts, x='Location', y='Count', text='Count', height=350)
-        fig.update_layout(margin=dict(l=0, r=0, t=10, b=0)) # ลดขอบกราฟ
+        fig = px.bar(counts, x='Location', y='Count', title="จำนวนกล่องตามตำแหน่ง", text='Count')
         st.plotly_chart(fig, use_container_width=True)
 
-with tab2:
-    if 'Status' in filtered_df.columns:
-        status_counts = filtered_df['Status'].value_counts().reset_index()
+with col_chart2:
+    if 'Status' in df.columns:
+        status_counts = df['Status'].value_counts().reset_index()
         status_counts.columns = ['Status', 'Count']
-        fig2 = px.pie(status_counts, values='Count', names='Status', hole=0.4, height=350,
-                      color='Status', color_discrete_map={"Expired (หมดอายุ)":"#FF4B4B", "OK (ปกติ)":"#00CC96", "Expiring Soon (ใกล้หมด)":"#FFA500"})
-        fig2.update_layout(margin=dict(l=0, r=0, t=10, b=0), legend=dict(orientation="h", y=-0.1)) # เอา Legend ไว้ข้างล่าง
+        fig2 = px.pie(status_counts, values='Count', names='Status', title="สัดส่วนสถานะยา", hole=0.4, 
+                      color='Status', color_discrete_map={"Expired (หมดอายุ)":"red", "OK (ปกติ)":"green", "Expiring Soon (ใกล้หมด)":"orange"})
         st.plotly_chart(fig2, use_container_width=True)
 
-# Table (ตาราง)
+# Table
 st.markdown("### 📋 รายละเอียด")
-# เลือกแสดงเฉพาะคอลัมน์ที่จำเป็น เพื่อไม่ให้ตารางกว้างเกินไปบนมือถือ
-show_cols = ['ชื่อกล่อง', 'ตำเเหน่งกล่อง', 'DayLeft', 'Status']
-# ถ้ามีคอลัมน์ครบ ให้โชว์ ถ้าไม่ครบก็โชว์หมด
-final_cols = [c for c in show_cols if c in filtered_df.columns]
-if not final_cols: final_cols = filtered_df.columns
-
 def color_survived(val):
     color = '#ffcccc' if val == "Expired (หมดอายุ)" else '#ffebcc' if val == "Expiring Soon (ใกล้หมด)" else ''
     return f'background-color: {color}'
 
-st.dataframe(
-    filtered_df[final_cols].style.map(color_survived, subset=['Status'] if 'Status' in final_cols else None),
-    use_container_width=True,
-    hide_index=True # ซ่อนเลขบรรทัด 0,1,2 เพื่อประหยัดที่
-)
+st.dataframe(df.style.map(color_survived, subset=['Status']), use_container_width=True)
