@@ -92,7 +92,7 @@ st.caption("Tha Tum Hospital") # ใช้ Caption แทนชื่อยา�
 c_edit, c_refresh = st.columns([1, 1])
 with c_edit:
     # 🔴 ใส่ Link Google Sheet หน้า Edit ที่นี่
-    st.link_button("📝 แก้ไข (Sheet)", "https://docs.google.com/spreadsheets/d/xxxxxx/edit", use_container_width=True)
+    st.link_button("📝 แก้ไข (Sheet)", "https://docs.google.com/spreadsheets/d/19FgECl3Cv8R6U9jyvAWX03ga9W778_25RYL8p4HwJ0M/edit?gid=657899255#gid=657899255", use_container_width=True)
 with c_refresh:
     if st.button("🔄 รีเฟรชข้อมูล", use_container_width=True):
         st.cache_data.clear()
